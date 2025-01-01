@@ -24,9 +24,6 @@ if [[ -f /etc/ugreen-leds.conf ]]; then
   source /etc/ugreen-leds.conf
 fi
 
-COLOR_NETDEV_NORMAL=${COLOR_NETDEV_NORMAL:="255 255 255"} 
-COLOR_NETDEV_GATEWAY_UNREACHABLE=${COLOR_NETDEV_GATEWAY_UNREACHABLE:="255 0 0"} 
-
 BRIGHTNESS_CPUTEMP_LED=${BRIGHTNESS_CPUTEMP_LED:="255"} 
 
 COLOR_CPUTEMP_IDLE=${COLOR_CPUTEMP_IDLE:="0 128 0"} 
@@ -44,9 +41,6 @@ led="power"
 echo $COLOR_CPUTEMP_IDLE > /sys/class/leds/$led/color
 echo $BRIGHTNESS_CPUTEMP_LED > /sys/class/leds/$led/brightness
 echo none > /sys/class/leds/$led/blink_type
-
-#CPU_TEMP_COMMAND=`$(sensors 2>/dev/null | grep -oP -s 'Package.*?\+\K[0-9.]+')`
-#CPU_TEMP=0
 
 function set_cputemp_color() {
     
