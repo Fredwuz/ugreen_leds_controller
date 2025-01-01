@@ -1,0 +1,13 @@
+[Unit]
+Description=UGREEN CPU daemon for monitoring cpu tempature
+After=systemd-modules-load.service
+Requires=systemd-modules-load.service
+
+[Service]
+ExecStartPre=/usr/bin/ugreen-probe-leds
+ExecStart=/usr/bin/ugreen-cputemp
+StandardOutput=journal
+
+[Install]
+WantedBy=multi-user.target
+
