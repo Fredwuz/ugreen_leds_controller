@@ -5,7 +5,7 @@ Requires=systemd-modules-load.service
 
 [Service]
 ExecStartPre=/usr/bin/ugreen-probe-leds
-ExecStart=/usr/bin/ugreen-cputemp
+ExecStart=/usr/bin/ugreen-cputempmon
 StandardOutput=journal
 
 [Install]
