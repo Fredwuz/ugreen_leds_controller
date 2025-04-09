@@ -1,3 +1,8 @@
+#stop the services if they are running
+systemctl stop ugreen-netdevmon@enp2s0 
+systemctl stop ugreen-diskiomon
+systemctl stop ugreen-cputempmon
+
 # copy the scripts
 scripts=(ugreen-diskiomon ugreen-netdevmon ugreen-probe-leds ugreen-cputempmon)
 for f in ${scripts[@]}; do
