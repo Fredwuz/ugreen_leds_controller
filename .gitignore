@@ -15,5 +15,3 @@ compile_commands.json
 .cache
 Module.symvers
 release
-scripts/ugreen-blink-disk
-scripts/ugreen-check-standby

@@ -1,26 +1,29 @@
 LED Controller for UGREEN's DX/DXP NAS Series
 ==
 
-UGREEN's DX/DXP NAS Series covers 2 to 8 bay NAS devices with a built-in system based on OpenWRT called `UGOS`.  
+UGREEN's DX/DXP NAS Series covers 2 to 8 bay NAS devices with a built-in system based on OpenWRT called `UGOS` or Debian called `UGOS-Pro`.  
 Debian Linux or dedicated NAS operating systems and appliances are compatible with the hardware, but do not have drivers for the LED lights on the front panel to indicate power, network and hard drive activity.  
-Instead, when using a 3rd party OS with DX 4600 Pro, only the power indicator light blinks, and the other LEDs are off by default.
+Instead, when using a 3rd party OS with e.g. DX 4600 Pro, only the power indicator light blinks, and the other LEDs are off by default.  
+For the DXP series, all LEDs blink in rolling sequence when non-UGOS systems are running.
 
 This repository
- - describes the control logic of UGOS for these LED lights
- - provides a command-line tool and a kernel module to control them  
+ - Describes the control logic of UGOS for the LED lights on the device front
+ - Provides a command-line tool and a kernel module to control them  
 
 For the process of understanding this control logic, please refer to [my blog (in Chinese)](https://blog.miskcoo.com/2024/05/ugreen-dx4600-pro-led-controller).
 
 > [!NOTE]  
-> Only tested on the following devices:
+> Only tested and working on the following devices:
 > - [x] UGREEN DX4600 Pro
 > - [x] UGREEN DX4700+
 > - [x] UGREEN DXP2800 (reported in [#19](https://github.com/miskcoo/ugreen_leds_controller/issues/19))
 > - [x] UGREEN DXP4800 (confirmed in [#41](https://github.com/miskcoo/ugreen_leds_controller/issues/41))
 > - [x] UGREEN DXP4800 Plus (reported [here](https://gist.github.com/Kerryliu/c380bb6b3b69be5671105fc23e19b7e8))
+> - [ ] UGREEN DXP4800 GT ([#100](https://github.com/miskcoo/ugreen_leds_controller/pull/100))
 > - [x] UGREEN DXP6800 Pro (reported in [#7](https://github.com/miskcoo/ugreen_leds_controller/issues/7))
 > - [x] UGREEN DXP8800 Plus (see [this repo](https://github.com/meyergru/ugreen_dxp8800_leds_controller) and [#1](https://github.com/miskcoo/ugreen_leds_controller/issues/1))
 > - [ ] UGREEN DXP480T Plus (**Not yet**, but the protocol has been understood, see [#6](https://github.com/miskcoo/ugreen_leds_controller/issues/6#issuecomment-2156807225))
+> - [ ] UGREEN iDX6011 Pro ([#93](https://github.com/miskcoo/ugreen_leds_controller/issues/93))
 >
 >**I am not sure whether this is compatible with other devices.  
 >If you have tested it with different devices, please feel free to update the list above!**
@@ -29,7 +32,7 @@ For the process of understanding this control logic, please refer to [my blog (i
 
 For third-party systems, I am using Debian 12 "Bookworm", but you can find some manuals for other systems:
 - **DSM**: see [#8](https://github.com/miskcoo/ugreen_leds_controller/issues/8)
-- **TrueNAS**: see [#13](https://github.com/miskcoo/ugreen_leds_controller/issues/13) (and maybe [here](https://github.com/miskcoo/ugreen_leds_controller/tree/truenas-build/build-scripts/truenas)) for how to build the module, and [here](https://gist.github.com/Kerryliu/c380bb6b3b69be5671105fc23e19b7e8) for a script using the cli tool; [here](https://github.com/miskcoo/ugreen_leds_controller/tree/gh-actions/build-scripts/truenas/build) for pre-build drivers 
+- **TrueNAS**: see [#13](https://github.com/miskcoo/ugreen_leds_controller/issues/13) and [this repo](https://github.com/0x556c79/install-ugreen-leds-controller) (and maybe [here](https://github.com/miskcoo/ugreen_leds_controller/tree/truenas-build/build-scripts/truenas)) for how to build the module, and [here](https://gist.github.com/Kerryliu/c380bb6b3b69be5671105fc23e19b7e8) for a script using the cli tool; [here](https://github.com/miskcoo/ugreen_leds_controller/tree/gh-actions/build-scripts/truenas/build) for pre-build drivers 
 - **unRAID**: there is a [plugin](https://forums.unraid.net/topic/168423-ugreen-nas-led-control/); see also [this repo](https://github.com/ich777/unraid-ugreenleds-driver/tree/master/source/usr/bin)
 - **Proxmox**: you need to use the cli tool in Proxmox, not in a VM
 - **Debian**: see [the section below](#start-at-boot-for-debian-12)
@@ -55,7 +58,8 @@ ugreen_leds_cli disk4  -color 0 0 255   -blink 400 600
 
 ## Preparation
 
-We communicate with the control chip of the LED via I2C, corresponding to the device with address `0x3a` on *SMBus I801 adapter*. Before proceeding, we need to load the `i2c-dev` module and install the `i2c-tools` tool.
+We communicate with the control chip of the LED via I2C, corresponding to the device with address `0x3a` on *SMBus I801 adapter*.  
+Before proceeding, we need to load the `i2c-dev` module and install the `i2c-tools` tool.
 
 ```
 $ apt install -y i2c-tools
@@ -130,9 +134,9 @@ ugreen_leds_cli power -on -color 0 0 255 -brightness 128 -status
 
 There are three methods to install the module:
 
-- Run `cd kmod && make` to build the kernel module, and then load it with `sudo insmod led-ugreen.ko`.
+- **A)** Run `cd kmod && make` to build the kernel module, and then load it with `sudo insmod led-ugreen.ko`.
 
-- Alternatively, you can install it with dkms:
+- **B)** Alternatively, you can install it with dkms:
 
   ```bash
   cp -r kmod /usr/src/led-ugreen-0.1
@@ -140,7 +144,7 @@ There are three methods to install the module:
   dkms build -m led-ugreen -v 0.1 && dkms install -m led-ugreen -v 0.1
   ```
 
-- You can also directly install the package [here](https://github.com/miskcoo/ugreen_leds_controller/releases).
+- **C)** You can also directly install the `.deb` package [here](https://github.com/miskcoo/ugreen_leds_controller/releases).
 
 After loading the `led-ugreen` module, you need to run `scripts/ugreen-probe-leds`, and you can see LEDs in `/sys/class/leds`.
 
@@ -170,25 +174,28 @@ To see how to map the disk LEDs to correct disk slots, please read the [Disk Map
 
 #### Start at Boot (for Debian 12)
 
-The configure file of `ugreen-diskiomon` and `ugreen-netdevmon` is `/etc/ugreen-led.conf`.  
+The configure file of `ugreen-diskiomon` and `ugreen-netdevmon` is `/etc/ugreen-leds.conf`.  
 Please see `scripts/ugreen-leds.conf` for an example.
 
-- Edit `/etc/modules-load.d/ugreen-led.conf` and add the following lines:
+- Add the following lines to `/etc/modules-load.d/ugreen-led.conf`
   ```
+  cat > /etc/modules-load.d/ugreen-led.conf << EOF
   i2c-dev
   led-ugreen
   ledtrig-oneshot
   ledtrig-netdev
+  EOF
   ```
 
 - Install the `smartctl` tool: `apt install smartmontools`
 
-- Install the kernel module by one of the three methods mentioned above. For example, directly install [the deb package](https://github.com/miskcoo/ugreen_leds_controller/releases).
+- Install the kernel module by one of the three methods mentioned above.  
+  For example, directly install [the deb package](https://github.com/miskcoo/ugreen_leds_controller/releases).
 
 - Copy files in the `scripts` directory: 
   ```bash
   # copy the scripts
-  scripts=(ugreen-diskiomon ugreen-netdevmon ugreen-probe-leds)
+  scripts=(ugreen-diskiomon ugreen-netdevmon ugreen-probe-leds ugreen-power-led)
   for f in ${scripts[@]}; do
       chmod +x "scripts/$f"
       cp "scripts/$f" /usr/bin
@@ -198,18 +205,20 @@ Please see `scripts/ugreen-leds.conf` for an example.
   cp scripts/ugreen-leds.conf /etc/ugreen-leds.conf
   
   # copy the systemd services 
-  cp scripts/*.service /etc/systemd/system/
+  cp scripts/systemd/*.service /etc/systemd/system/
   
   systemctl daemon-reload
   
   # change enp2s0 to the network device you want to monitor
   systemctl start ugreen-netdevmon@enp2s0 
   systemctl start ugreen-diskiomon
+  systemctl start ugreen-power-led
   
   # if you confirm that everything works well, 
   # run the command below to make the service start at boot
   systemctl enable ugreen-netdevmon@enp2s0 
   systemctl enable ugreen-diskiomon
+  systemctl enable ugreen-power-led
   ```
 
 - (_Optional_) To reduce the CPU usage of blinking LEDs when disks are active, you can enter the `scripts` directory and do the following things:
@@ -255,20 +264,20 @@ sdh  7:0:0:0    XXJDB1XX
 > [!NOTE]  
 > As far as we know, the mapping between HCTL and the disk serial are stable at each boot (see [#4](https://github.com/miskcoo/ugreen_leds_controller/pull/4) and [#9](https://github.com/miskcoo/ugreen_leds_controller/issues/9)).  
 > However, it has been reported that the exact order is model-dependent (see [#9](https://github.com/miskcoo/ugreen_leds_controller/issues/9)).  
-> - For DX4600 Pro and DXP8800 Plus, the mapping is `X:0:0:0 -> diskX`.  
+> - For DX4600 Pro, DXP4800, and DXP8800 Plus, the mapping is `X:0:0:0 -> diskX`.  
 > - For DXP6800 Pro, `0:0:0:0` and  `1:0:0:0` are mapped to `disk5` and `disk6`, and `2:0:0:0` to `6:0:0:0` are mapped to `disk1` to `disk4`.
 >
 > The script will use `dmidecode` to detect the device model, but I suggest to check the mapping outputed by the script manually.
 
 ## Communication Protocols
 
-The IDs for the six LED lights on the front panel of the DX4600 Pro chassis are as follows: 
+The IDs for the LED lights on the front panel of the NAS chassis are as follows: 
 
-| ID | LED |
-|------|--------------------------------|
-| 0    | power indicator |
-| 1    | network device indicator |
-| 2-5  | hard drive indicator 1-4 |
+|     ID      | LED |
+|-------------|--------------------------------|
+| `0`         | Power indicator |
+| `1`         | Network device indicator |
+| `2`,`3`,... | Hard drive indicator "disk1", "disk2" etc. |
 
 ### Query Status
 
@@ -276,17 +285,17 @@ Reading 11 bytes from the address `0x81 + LED_ID` allows us to obtain the curren
 
 | Address | Meaning of Corresponding Data |
 |---------|--------------------------------|
-| 0x00    | LED status: 0 - off, 1 - on, 2 - blink, 3 - breath |
-| 0x01    | LED brightness |
-| 0x02    | LED color (Red component in RGB) |
-| 0x03    | LED color (Green component in RGB) |
-| 0x04    | LED color (Blue component in RGB) |
-| 0x05    | Milliseconds needed to complete one blink / breath cycle (high 8 bits) |
-| 0x06    | Milliseconds needed to complete one blink / breath cycle (low 8 bits) |
-| 0x07    | Milliseconds the LED is on during one blink / breath cycle (high 8 bits) |
-| 0x08    | Milliseconds the LED is on during one blink / breath cycle (low 8 bits) |
-| 0x09    | Checksum of data in the range 0x00 - 0x08 (high 8 bits) |
-| 0x0a    | Checksum of data in the range 0x00 - 0x08 (low 8 bits) |
+| `0x00`  | LED status: 0 (off), 1 (on), 2 (blink), 3 (breath) |
+| `0x01`  | LED brightness |
+| `0x02`  | LED color (Red component in RGB) |
+| `0x03`  | LED color (Green component in RGB) |
+| `0x04`  | LED color (Blue component in RGB) |
+| `0x05`  | Milliseconds needed to complete one blink/breath cycle (high 8 bits) |
+| `0x06`  | Milliseconds needed to complete one blink/breath cycle (low 8 bits) |
+| `0x07`  | Milliseconds the LED is on during one blink/breath cycle (high 8 bits) |
+| `0x08`  | Milliseconds the LED is on during one blink/breath cycle (low 8 bits) |
+| `0x09`  | Checksum of data in the range 0x00 - 0x08 (high 8 bits) |
+| `0x0a`  | Checksum of data in the range 0x00 - 0x08 (low 8 bits) |
 
 The checksum is a 16-bit value obtained by summing all the data at the corresponding positions as unsigned integers.
 
@@ -302,25 +311,24 @@ By writing 12 bytes to the address `0x00 + LED_ID`, we can modify the current st
 
 | Address | Meaning of Corresponding Data |
 |---------|--------------------------------|
-| 0x00    | LED ID |
-| 0x01    | Constant: 0xa0 |
-| 0x02    | Constant: 0x01 |
-| 0x03    | Constant: 0x00 |
-| 0x04    | Constant: 0x00 |
-| 0x05    | If the value is 1, it indicates modifying brightness. <br/>If the value is 2, it indicates modifying color. <br/>If the value is 3, it indicates setting the on/off state.<br/>If the value is 4 / 5, it indicates setting the blink / breath state. |
-| 0x06    | First parameter |
-| 0x07    | Second parameter |
-| 0x08    | Third parameter |
-| 0x09    | Fourth parameter |
-| 0x0a    | Checksum of data in the range 0x01 - 0x09 (high 8 bits) |
-| 0x0b    | Checksum of data in the range 0x01 - 0x09 (low 8 bits) |
+| `0x00`  | LED ID |
+| `0x01`  | Constant: 0xa0 |
+| `0x02`  | Constant: 0x01 |
+| `0x03`  | Constant: 0x00 |
+| `0x04`  | Constant: 0x00 |
+| `0x05`  | If the value is 1, it indicates modifying brightness<br/> If the value is 2, it indicates modifying color<br/> If the value is 3, it indicates setting the on/off state<br/> If the value is 4, it indicates setting the blink state<br/> If the value is 5, it indicates setting the breath state |
+| `0x06`  | First parameter |
+| `0x07`  | Second parameter |
+| `0x08`  | Third parameter |
+| `0x09`  | Fourth parameter |
+| `0x0a`  | Checksum of data in the range 0x01 - 0x09 (high 8 bits) |
+| `0x0b`  | Checksum of data in the range 0x01 - 0x09 (low 8 bits) |
 
-For the four different modification types at address 0x05:
-
-- If we need to modify brightness, the first parameter contains brightness information.
-- If we need to modify color, the first three parameters represent RGB information.
-- If we need to toggle the on/off state, the first parameter is either 0 or 1, representing off or on, respectively.
-- If we need to set the blink / breath state, the first two parameters together form a 16-bit unsigned integer in big-endian order, representing the number of milliseconds needed to complete one blink / breath cycle. The next two parameters, also in big-endian order, represent the number of milliseconds the LED is on during one blink / breath cycle.
+For the four different modification types at address `0x05`:
+- If we need to modify **brightness**, the first parameter contains brightness information.
+- If we need to modify **color**, the first three parameters represent RGB information.
+- If we need to toggle the **on/off state**, the first parameter is either 0 (off) or 1 (on).
+- If we need to set the **blink/breath state**, the first two parameters together form a 16-bit unsigned integer in big-endian order, representing the number of milliseconds needed to complete one blink/breath cycle. The next two parameters, also in big-endian order, represent the time in milliseconds the LED is on during one blink/breath cycle.
 
 Below is an example for turning off and on the power indicator light using `i2cset`:
 
